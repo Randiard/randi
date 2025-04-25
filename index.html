@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Lukis Digital</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #87CEEB 0%, #6CA6CD 50%, #4A708B 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #tools-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .tool-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .tool-btn.active {
+            background: rgba(255,255,255,0.4);
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .tool-icon {
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            animation: canvas-float 3s ease-in-out infinite;
+        }
+
+        #main-canvas {
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        #color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .color-box {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .color-box:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        .color-box.selected {
+            transform: scale(1.15);
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            border: 2px solid white;
+        }
+
+        @keyframes canvas-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @media (max-width: 600px) {
+            #canvas-container {
+                height: 300px;
+            }
+            
+            .color-box {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .tool-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="tools-container">
+            <!-- Ganti src dengan path icon Anda -->
+            <button id="pencil-btn" class="tool-btn active">
+                <div class="tool-icon" style="background-image: url('Pencil.png')"></div>
+                
+            </button>
+            <button id="eraser-btn" class="tool-btn">
+                <div class="tool-icon" style="background-image: url('Eraser.png')"></div>
+                
+            </button>
+            <button id="reset-btn" class="tool-btn">
+                <div class="tool-icon" style="background-image: url('Reload.png')"></div>
+                
+            </button>
+            <button id="next-btn" class="tool-btn">
+                <div class="tool-icon" style="background-image: url('Next.png')"></div>
+                
+            </button>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="main-canvas"></canvas>
+        </div>
+
+        <div id="color-palette">
+            <div class="color-box" style="background-color: #000000"></div>
+            <div class="color-box" style="background-color: #FF0000"></div>
+            <div class="color-box" style="background-color: #00FF00"></div>
+            <div class="color-box" style="background-color: #0000FF"></div>
+            <div class="color-box" style="background-color: #FFFF00"></div>
+            <div class="color-box" style="background-color: #FFA500"></div>
+            <div class="color-box" style="background-color: #FF00FF"></div>
+            <div class="color-box" style="background-color: #00FFFF"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentColor = '#000000'; // Default hitam
+        let currentTool = 'pencil';
+        let currentImage = null;
+        
+        // Daftar gambar PNG (Ganti dengan link gambar Anda)
+        const imageList = [
+            // Contoh (ganti dengan URL gambar Anda):
+            'Kelinci.png',
+            'Natal.png',
+            'Pesawat.png',
+            'Teddy.png'
+        ];
+
+        // Set canvas size
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+            
+            if (currentImage) {
+                drawImage(currentImage);
+            } else {
+                initCanvas();
+            }
+        }
+
+        // Initialize canvas
+        function initCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+            
+            if (e.type.includes('touch')) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+            
+            return { x, y };
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const pos = getPosition(e);
+            
+            ctx.lineWidth = (currentTool === 'eraser') ? 20 : 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
+            
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        // Image handling
+        function drawImage(imageSrc) {
+            const img = new Image();
+            img.src = imageSrc;
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                currentImage = imageSrc;
+            };
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Drawing events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startDrawing(e);
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                draw(e);
+            });
+            
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            // Color selection
+            document.querySelectorAll('.color-box').forEach(box => {
+                box.addEventListener('click', () => {
+                    document.querySelectorAll('.color-box').forEach(b => b.classList.remove('selected'));
+                    box.classList.add('selected');
+                    currentColor = box.style.backgroundColor;
+                    currentTool = 'pencil';
+                    document.getElementById('pencil-btn').classList.add('active');
+                    document.getElementById('eraser-btn').classList.remove('active');
+                });
+            });
+            
+            // Tool buttons
+            document.getElementById('pencil-btn').addEventListener('click', () => {
+                currentTool = 'pencil';
+                document.getElementById('pencil-btn').classList.add('active');
+                document.getElementById('eraser-btn').classList.remove('active');
+            });
+            
+            document.getElementById('eraser-btn').addEventListener('click', () => {
+                currentTool = 'eraser';
+                document.getElementById('eraser-btn').classList.add('active');
+                document.getElementById('pencil-btn').classList.remove('active');
+            });
+            
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                initCanvas();
+                currentImage = null;
+            });
+            
+            document.getElementById('next-btn').addEventListener('click', () => {
+                if (imageList.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * imageList.length);
+                    drawImage(imageList[randomIndex]);
+                } else {
+                    alert("Silakan tambahkan link gambar PNG ke dalam array imageList di JavaScript");
+                }
+            });
+            
+            // Window resize
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        // Initialize app
+        function initApp() {
+            resizeCanvas();
+            initCanvas();
+            setupEventListeners();
+            
+            // Set default color to black
+            document.querySelector('.color-box[style*="#000000"]').classList.add('selected');
+        }
+
+        // Start the app
+        initApp();
+    </script>
+</body>
+</html>
